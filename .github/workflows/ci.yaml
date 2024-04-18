@@ -1,32 +1,26 @@
-name: Create Kubernetes Cluster
+name: Setup k3s Cluster
 
 on:
   workflow_dispatch:
 
 jobs:
-  create-cluster:
+  setup-cluster:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
 
-      - name: Install kubeadm, kubelet, kubectl
+      - name: Install k3s
         run: |
-          sudo apt-get update
-          sudo apt-get install -y apt-transport-https ca-certificates curl software-properties-common
-          curl -fsSL https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo apt-key add -
-          sudo add-apt-repository "deb https://apt.kubernetes.io/ kubernetes-xenial main"
-          sudo apt-get update
-          sudo apt-get install -y kubeadm kubelet kubectl
+          curl -sfL https://get.k3s.io | sh -
 
-      - name: Initialize Kubernetes cluster
-        run: sudo kubeadm init --pod-network-cidr=192.168.0.0/16
+      - name: Check k3s status
+        run: sudo systemctl status k3s
+
+      - name: Retrieve kubeconfig
+        run: sudo cat /etc/rancher/k3s/k3s.yaml
+        id: kubeconfig
+        continue-on-error: true
 
       - name: Set up kubeconfig
-        run: mkdir -p $HOME/.kube && sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config && sudo chown $(id -u):$(id -g) $HOME/.kube/config
-
-      - name: Install a pod network add-on
-        run: kubectl apply -f https://docs.projectcalico.org/manifests/calico.yaml
-
-      - name: Verify cluster is up and nodes are ready
-        run: kubectl get nodes
+        run: echo "${{ steps.kubeconfig.outputs.kubeconfig }}" >> $HOME/.kube/config
